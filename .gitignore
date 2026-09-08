@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+data/*.db
+data/*.sqlite
+.env
+venv/
+env/
+dist/
+build/
+*.AppImage
+AppDir/
+.DS_Store

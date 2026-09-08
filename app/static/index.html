@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitSentinel - Secret & API Key Guard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="min-h-screen flex flex-col bg-[#0d1117] text-slate-100 antialiased">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-gray-800 bg-[#161b22] sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i data-lucide="shield-alert" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-lg tracking-tight text-white">GitSentinel</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-medium">v1.0</span>
+        </div>
+        <p class="text-xs text-gray-400 hidden sm:block">Automated GitHub Secret & Env Variable Scanner</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex items-center space-x-1 bg-gray-900/80 p-1 rounded-xl border border-gray-800">
+      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-gray-800 text-white shadow-sm">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+        <span>Dashboard</span>
+      </button>
+      <button onclick="switchTab('findings')" id="tab-btn-findings" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-gray-800/50">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>Findings</span>
+        <span id="nav-findings-badge" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">0</span>
+      </button>
+      <button onclick="switchTab('settings')" id="tab-btn-settings" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-gray-800/50">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <!-- User Profile / Auth Button -->
+    <div class="flex items-center space-x-3">
+      <div id="auto-scan-status-pill" class="hidden md:flex items-center space-x-1.5 text-xs px-2.5 py-1 rounded-full bg-gray-800/60 border border-gray-700 text-gray-400">
+        <span class="w-2 h-2 rounded-full bg-gray-500" id="scheduler-dot"></span>
+        <span id="scheduler-text">Daily scan off</span>
+      </div>
+
+      <div id="user-profile-widget" class="flex items-center space-x-3">
+        <!-- Injected via JavaScript -->
+        <button onclick="openAuthModal()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition flex items-center space-x-2 shadow-sm">
+          <i data-lucide="github" class="w-4 h-4"></i>
+          <span>Sign In</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+    <!-- TAB: DASHBOARD -->
+    <section id="tab-dashboard" class="space-y-6">
+      
+      <!-- Welcome Banner if not authenticated -->
+      <div id="unauth-banner" class="hidden rounded-2xl bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-purple-950/40 border border-blue-800/50 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="space-y-1 text-center md:text-left">
+          <h2 class="text-xl font-bold text-white flex items-center justify-center md:justify-start gap-2">
+            <i data-lucide="key" class="w-5 h-5 text-cyan-400"></i>
+            Prevent Accidental Secret Leaks in Your Repositories
+          </h2>
+          <p class="text-sm text-gray-300 max-w-2xl">
+            Sign in with GitHub to scan your code line-by-line for exposed API keys, private tokens, passwords, and `.env` variables before malicious actors find them.
+          </p>
+        </div>
+        <button onclick="openAuthModal()" class="whitespace-nowrap px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/25 transition">
+          Sign In with GitHub
+        </button>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 space-y-2">
+          <div class="flex items-center justify-between text-gray-400">
+            <span class="text-xs font-medium uppercase tracking-wider">Repos Monitored</span>
+            <i data-lucide="folder-git-2" class="w-4 h-4 text-blue-400"></i>
+          </div>
+          <div class="text-2xl font-bold text-white" id="stat-total-repos">--</div>
+          <p class="text-xs text-gray-500">Accessible on GitHub</p>
+        </div>
+
+        <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 space-y-2">
+          <div class="flex items-center justify-between text-gray-400">
+            <span class="text-xs font-medium uppercase tracking-wider">Open Findings</span>
+            <i data-lucide="alert-circle" class="w-4 h-4 text-orange-400"></i>
+          </div>
+          <div class="text-2xl font-bold text-orange-400" id="stat-open-findings">0</div>
+          <p class="text-xs text-gray-500">Exposures requiring action</p>
+        </div>
+
+        <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 space-y-2">
+          <div class="flex items-center justify-between text-gray-400">
+            <span class="text-xs font-medium uppercase tracking-wider">Critical Severity</span>
+            <i data-lucide="flame" class="w-4 h-4 text-red-400"></i>
+          </div>
+          <div class="text-2xl font-bold text-red-400" id="stat-critical-findings">0</div>
+          <p class="text-xs text-gray-500">High-risk keys (AWS, Stripe, Private keys)</p>
+        </div>
+
+        <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-4 space-y-2">
+          <div class="flex items-center justify-between text-gray-400">
+            <span class="text-xs font-medium uppercase tracking-wider">Resolved</span>
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="text-2xl font-bold text-emerald-400" id="stat-resolved-findings">0</div>
+          <p class="text-xs text-gray-500">Remediated & safely rotated</p>
+        </div>
+      </div>
+
+      <!-- Scan Control Card -->
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-5">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="scan" class="w-5 h-5 text-cyan-400"></i>
+              Start Repository Scan
+            </h3>
+            <p class="text-xs text-gray-400">Inspect every line of code across your GitHub repositories for exposed credentials.</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button id="btn-cancel-scan" onclick="cancelScan()" class="hidden px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-red-400 border border-red-900/40 text-sm font-semibold transition">
+              Cancel Scan
+            </button>
+            <button id="btn-start-scan" onclick="triggerScan()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 transition flex items-center space-x-2">
+              <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+              <span>Launch Deep Scan</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scope Selection -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Scan Scope</label>
+            <div class="flex items-center space-x-4">
+              <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
+                <input type="radio" name="scan-scope" value="all" checked onchange="toggleScopeMode()" class="accent-cyan-500">
+                <span>All Repositories</span>
+              </label>
+              <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
+                <input type="radio" name="scan-scope" value="custom" onchange="toggleScopeMode()" class="accent-cyan-500">
+                <span>Select Specific Repos</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="repo-select-container" class="hidden space-y-2">
+            <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Choose Repositories</label>
+            <div id="repo-checkbox-list" class="max-h-40 overflow-y-auto bg-gray-900/70 border border-gray-800 rounded-xl p-3 space-y-2">
+              <!-- Dynamically populated -->
+              <span class="text-xs text-gray-500">Loading repositories...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Scan Progress Section -->
+        <div id="scan-progress-box" class="hidden space-y-4 pt-4 border-t border-gray-800">
+          <div class="flex items-center justify-between text-xs text-gray-400">
+            <div class="flex items-center space-x-2">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+              <span class="font-medium text-white" id="scan-current-repo-label">Scanning...</span>
+            </div>
+            <span id="scan-progress-percentage" class="font-bold text-cyan-400">0%</span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full bg-gray-900 rounded-full h-2.5 overflow-hidden border border-gray-800">
+            <div id="scan-progress-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+
+          <!-- Current File & Counts -->
+          <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+            <span class="truncate max-w-md text-gray-300 font-mono" id="scan-current-file-label">--</span>
+            <div class="flex items-center space-x-4">
+              <span>Files Scanned: <strong class="text-white font-mono" id="scan-files-counter">0</strong></span>
+              <span>Secrets Found: <strong class="text-red-400 font-mono" id="scan-findings-counter">0</strong></span>
+            </div>
+          </div>
+
+          <!-- Real-time Console Logs -->
+          <div class="terminal-box rounded-xl p-3.5 text-xs text-gray-300 h-40 overflow-y-auto font-mono space-y-1" id="scan-live-logs">
+            <div class="text-gray-500">Scan console ready...</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB: FINDINGS -->
+    <section id="tab-findings" class="hidden space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#161b22] border border-gray-800 rounded-2xl p-4">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-red-400"></i>
+            Detected Secrets & Environment Variables
+          </h3>
+          <p class="text-xs text-gray-400">Review, inspect, rotate, and purge exposed variables from your repositories.</p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filter-repo" onchange="loadFindings()" class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500">
+            <option value="">All Repositories</option>
+          </select>
+          <select id="filter-status" onchange="loadFindings()" class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500">
+            <option value="open">Status: Open</option>
+            <option value="resolved">Status: Resolved</option>
+            <option value="ignored">Status: Ignored</option>
+            <option value="all">Status: All</option>
+          </select>
+          <button onclick="loadFindings()" class="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-300 transition flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Findings List -->
+      <div id="findings-container" class="space-y-3">
+        <!-- Rendered dynamically -->
+        <div class="text-center py-12 text-gray-500 space-y-2">
+          <i data-lucide="check-check" class="w-8 h-8 mx-auto text-emerald-500/60"></i>
+          <p class="text-sm">No findings found matching the criteria.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: SETTINGS -->
+    <section id="tab-settings" class="hidden space-y-6">
+      <div class="bg-[#161b22] border border-gray-800 rounded-2xl p-6 space-y-6">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="sliders" class="w-5 h-5 text-cyan-400"></i>
+            Scanner & Automation Settings
+          </h3>
+          <p class="text-xs text-gray-400">Configure background scheduled scans, notifications, and scan filters.</p>
+        </div>
+
+        <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-6">
+          <!-- Daily Scan Configuration -->
+          <div class="space-y-4 border-t border-gray-800 pt-5">
+            <h4 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
+              <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
+              Daily Automated Background Scan
+            </h4>
+            
+            <div class="flex items-center justify-between p-4 bg-gray-900/60 border border-gray-800 rounded-xl">
+              <div>
+                <p class="text-sm font-medium text-white">Enable Daily Auto-Scan</p>
+                <p class="text-xs text-gray-400">Automatically executes a scan once a day in the background without user intervention.</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="setting-daily-scan-enabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-4 bg-gray-900/60 border border-gray-800 rounded-xl space-y-2">
+                <label class="text-xs font-semibold text-gray-300">Daily Execution Time (24h format)</label>
+                <input type="time" id="setting-daily-scan-time" value="03:00" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                <p class="text-xs text-gray-500">Local system time at which the daily job triggers.</p>
+              </div>
+
+              <div class="p-4 bg-gray-900/60 border border-gray-800 rounded-xl space-y-2 flex flex-col justify-between">
+                <div>
+                  <p class="text-sm font-medium text-white">Desktop Notifications</p>
+                  <p class="text-xs text-gray-400">Trigger native Windows desktop toast notifications when secrets are detected.</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer mt-2">
+                  <input type="checkbox" id="setting-desktop-notifications" class="sr-only peer" checked>
+                  <div class="w-11 h-6 bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scan Filters -->
+          <div class="space-y-4 border-t border-gray-800 pt-5">
+            <h4 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
+              <i data-lucide="filter" class="w-4 h-4 text-purple-400"></i>
+              Exclusions & Sensitivity
+            </h4>
+
+            <div class="space-y-3">
+              <div>
+                <label class="text-xs font-semibold text-gray-300">Excluded File Extensions (comma separated)</label>
+                <input type="text" id="setting-excluded-extensions" class="mt-1 w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                <p class="text-xs text-gray-500 mt-1">Binary, image, audio, or compiled extensions to skip for lightweight performance.</p>
+              </div>
+
+              <div>
+                <label class="text-xs font-semibold text-gray-300">Excluded Folder Paths & Filenames (comma separated)</label>
+                <input type="text" id="setting-excluded-paths" class="mt-1 w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                <p class="text-xs text-gray-500 mt-1">Vendored folders like node_modules, dist, vendor, etc.</p>
+              </div>
+
+              <div>
+                <label class="text-xs font-semibold text-gray-300">Minimum Shannon Entropy Threshold</label>
+                <div class="flex items-center space-x-3 mt-1">
+                  <input type="range" id="setting-min-entropy" min="2.0" max="5.0" step="0.1" value="3.2" oninput="document.getElementById('entropy-val').innerText = this.value" class="flex-1 accent-cyan-500">
+                  <span id="entropy-val" class="font-mono text-sm text-cyan-400 font-bold w-10">3.2</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Controls secret randomness detection threshold (higher = fewer false positives).</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-800 pt-5 flex justify-end">
+            <button type="submit" class="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition flex items-center space-x-2 shadow-lg shadow-cyan-600/20">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              <span>Save Settings</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Remediation Guidance Modal -->
+  <div id="remediation-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl relative">
+      <button onclick="closeRemediationModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+          <i data-lucide="shield-alert" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Remediation Guide</h3>
+          <p class="text-xs text-gray-400" id="modal-finding-subtitle">How to safely remove this secret</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 text-sm text-gray-300">
+        <!-- Step 1 -->
+        <div class="p-3.5 bg-gray-900/80 rounded-xl border border-gray-800 space-y-1">
+          <p class="font-bold text-white flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-xs">1</span>
+            Rotate or Revoke Immediately
+          </p>
+          <p class="text-xs text-gray-400 pl-7">
+            Once committed to GitHub, assume this secret is compromised. Revoke it on the provider's dashboard (e.g. AWS, OpenAI, Stripe) and generate a replacement.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="p-3.5 bg-gray-900/80 rounded-xl border border-gray-800 space-y-2">
+          <p class="font-bold text-white flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">2</span>
+            Purge from Git History
+          </p>
+          <p class="text-xs text-gray-400 pl-7">
+            Simply deleting the line in a new commit is <strong>not sufficient</strong> because the key remains in your git history! Use `git-filter-repo` to permanently erase it:
+          </p>
+          <div class="ml-7 bg-gray-950 p-2.5 rounded-lg border border-gray-800 font-mono text-xs text-cyan-300 flex items-center justify-between">
+            <code id="modal-git-command">git filter-repo --invert-paths --path &lt;FILE_PATH&gt;</code>
+            <button onclick="copyToClipboard(document.getElementById('modal-git-command').innerText)" class="text-gray-400 hover:text-white" title="Copy">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="p-3.5 bg-gray-900/80 rounded-xl border border-gray-800 space-y-1">
+          <p class="font-bold text-white flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">3</span>
+            Store in `.env` or GitHub Secrets
+          </p>
+          <p class="text-xs text-gray-400 pl-7">
+            Place sensitive variables inside a local <code>.env</code> file, add <code>.env</code> to your <code>.gitignore</code>, and configure production secrets under <strong>Repo Settings &gt; Secrets and Variables</strong> on GitHub.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeRemediationModal()" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm font-semibold text-gray-200">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Authentication Modal -->
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-600/30 flex items-center justify-center mx-auto text-blue-400">
+          <i data-lucide="github" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white">Sign In to GitHub</h3>
+        <p class="text-xs text-gray-400">Connect your account so GitSentinel can inspect your repository code.</p>
+      </div>
+
+      <!-- Auth Modes -->
+      <div class="space-y-4">
+        <div class="p-4 bg-gray-900/80 rounded-xl border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-white flex items-center gap-1.5">
+              <i data-lucide="key" class="w-3.5 h-3.5 text-cyan-400"></i>
+              Personal Access Token (Recommended)
+            </label>
+            <a href="https://github.com/settings/tokens/new?scopes=repo,read:user,user:email&description=GitSentinel-Scanner" target="_blank" class="text-xs text-cyan-400 hover:underline flex items-center gap-0.5">
+              <span>Generate PAT</span>
+              <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
+          <p class="text-xs text-gray-400">Create a Classic or Fine-grained token with <code>repo</code> scope for private repos or public read.</p>
+          <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+          <button onclick="submitPatLogin()" id="btn-submit-pat" class="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-2">
+            <span>Connect with Token</span>
+          </button>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-gray-800"></div>
+          <span class="flex-shrink mx-3 text-xs text-gray-500 uppercase">Or Device Authorization</span>
+          <div class="flex-grow border-t border-gray-800"></div>
+        </div>
+
+        <div class="p-4 bg-gray-900/80 rounded-xl border border-gray-800 space-y-3">
+          <p class="text-xs text-gray-400">If you configured a custom GitHub OAuth App Client ID, you can authorize via device code:</p>
+          <div class="flex space-x-2">
+            <input type="text" id="device-client-id-input" placeholder="GitHub OAuth Client ID" class="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none">
+            <button onclick="startDeviceAuth()" class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold">Start</button>
+          </div>
+          <div id="device-flow-info" class="hidden p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-lg space-y-2 text-xs">
+            <p class="text-gray-300">Open <a id="device-flow-url" href="https://github.com/login/device" target="_blank" class="text-cyan-400 underline font-mono font-bold">github.com/login/device</a> and enter code:</p>
+            <div id="device-flow-user-code" class="text-center font-mono font-bold text-lg text-cyan-300 bg-gray-950 py-1.5 rounded tracking-widest">----</div>
+            <p class="text-gray-400 text-center animate-pulse">Waiting for authorization on GitHub...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-[#161b22] border border-cyan-500/50 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm">
+    <i data-lucide="info" class="w-5 h-5 text-cyan-400" id="toast-icon"></i>
+    <span id="toast-message">Notification</span>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

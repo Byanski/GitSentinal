@@ -1,0 +1,159 @@
+name: Build and Publish Releases
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Executable (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build Windows Executable
+        run: |
+          pyinstaller --clean GitSentinel.spec
+
+      - name: Upload Windows Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-executable
+          path: dist/GitSentinel.exe
+
+  build-linux:
+    name: Build Linux AppImage (.AppImage)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build Linux Binary
+        run: |
+          pyinstaller --clean GitSentinel.spec
+
+      - name: Package AppImage
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp dist/GitSentinel AppDir/usr/bin/
+
+          # Create AppRun launcher
+          cat << 'EOF' > AppDir/AppRun
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "$HERE/usr/bin/GitSentinel" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+          # Create Desktop Entry
+          cat << 'EOF' > AppDir/GitSentinel.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=GitSentinel
+          Exec=GitSentinel
+          Icon=gitsentinel
+          Categories=Utility;Security;Development;
+          Terminal=true
+          EOF
+
+          # Create default application icon
+          cat << 'EOF' > AppDir/gitsentinel.svg
+          <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          EOF
+          cp AppDir/gitsentinel.svg AppDir/.DirIcon
+
+          # Download appimagetool and generate AppImage
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir GitSentinel-x86_64.AppImage
+
+      - name: Upload Linux AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: GitSentinel-x86_64.AppImage
+
+  publish-release:
+    name: Publish to GitHub Releases
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows Executable
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-executable
+          path: release-assets/
+
+      - name: Download Linux AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: release-assets/
+
+      - name: Determine Release Tag
+        id: vars
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "title=Release ${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=v1.0.0" >> $GITHUB_OUTPUT
+            echo "title=GitSentinel v1.0.0 Latest Release" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.title }}
+          body: |
+            ## GitSentinel Release Assets 🛡️
+
+            Automated standalone builds for Windows and Linux:
+            - **Windows**: `GitSentinel.exe` (portable single-file executable, zero install needed)
+            - **Linux**: `GitSentinel-x86_64.AppImage` (portable executable, run with `chmod +x` and execute)
+
+            ### Features:
+            - GitHub OAuth Device Flow & Personal Access Token login
+            - In-memory line-by-line secret & environment variable scanner
+            - Direct GitHub line links & copy-paste remediation commands
+            - Configurable daily automated background scan with desktop notifications
+          files: |
+            release-assets/GitSentinel.exe
+            release-assets/GitSentinel-x86_64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
