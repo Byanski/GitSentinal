@@ -387,6 +387,33 @@
             Place sensitive variables inside a local <code>.env</code> file, add <code>.env</code> to your <code>.gitignore</code>, and configure production secrets under <strong>Repo Settings &gt; Secrets and Variables</strong> on GitHub.
           </p>
         </div>
+
+        <!-- Fix with AI Section -->
+        <div class="p-4 bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-blue-950/40 rounded-2xl border border-purple-800/40 space-y-3 mt-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                  <span>Fix with AI</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-700">Agent Prompt</span>
+                </h4>
+                <p class="text-xs text-gray-400">Engineered instructions for Claude, Cursor, Antigravity, or ChatGPT to clone, fix, and push.</p>
+              </div>
+            </div>
+            <button onclick="copyAiPrompt()" id="btn-copy-ai-prompt" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-lg shadow-purple-600/25 shrink-0">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span id="copy-ai-btn-text">Copy AI Prompt</span>
+            </button>
+          </div>
+
+          <!-- Prompt Preview Box -->
+          <div class="relative">
+            <textarea id="modal-ai-prompt" readonly rows="5" class="w-full bg-gray-950 border border-gray-800 rounded-xl p-3 font-mono text-[11px] text-purple-200 focus:outline-none focus:border-purple-500 select-all leading-relaxed" placeholder="Prompt will generate here..."></textarea>
+          </div>
+        </div>
       </div>
 
       <div class="flex justify-end space-x-3 pt-2">

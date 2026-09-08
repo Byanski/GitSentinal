@@ -447,6 +447,10 @@ function renderFindings(findings) {
               <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
               <span>Fix</span>
             </button>
+            <button onclick="openRemediationModal(${f.id}, true)" class="px-3 py-1.5 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 text-xs font-semibold transition flex items-center space-x-1" title="Generate AI prompt to clone, fix, and push">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>Fix with AI</span>
+            </button>
           </div>
         </div>
 
@@ -516,16 +520,88 @@ async function updateStatus(findingId, status) {
   }
 }
 
+// AI Remediation Prompt Builder
+function buildAiRemediationPrompt(finding) {
+  const repoName = finding.repo_name || (finding.repo_full_name ? finding.repo_full_name.split("/")[1] : "repository");
+  const branch = finding.branch || "main";
+
+  return `You are an expert full-stack developer and security engineer.
+
+TASK:
+A leaked credential / environment variable was detected in repository "${finding.repo_full_name}". Clone the repo, target the issue, fix the code to read the secret from environment variables, purge it from git history, and push the clean code back to GitHub.
+
+TARGET SPECIFICATIONS:
+- Repository: https://github.com/${finding.repo_full_name}.git
+- Default Branch: ${branch}
+- Affected File: ${finding.file_path}
+- Line Number: ${finding.line_number}
+- Secret Type: ${finding.secret_type} (${finding.severity} Severity)
+- Leaked Snippet: ${finding.snippet}
+
+STEP-BY-STEP INSTRUCTIONS:
+1. CLONE THE REPO & CHECKOUT BRANCH:
+   git clone https://github.com/${finding.repo_full_name}.git
+   cd ${repoName}
+   git checkout ${branch}
+
+2. TARGET & FIX THE ISSUE:
+   - Open "${finding.file_path}" around line ${finding.line_number}.
+   - Remove the hardcoded secret / API key / environment variable.
+   - Refactor the code to read this value dynamically from an environment variable (for example, process.env in JavaScript/TypeScript, os.environ.get in Python, System.getenv in Java, or language equivalent).
+   - Ensure the application provides a clear error or warning if the variable is not set.
+
+3. SET UP SECURE ENVIRONMENT CONFIG:
+   - Add a placeholder entry in ".env.example" (e.g. API_KEY="your_key_here") so developers know the required variable.
+   - Verify that ".env" and any sensitive files are strictly excluded in ".gitignore".
+
+4. PURGE FROM GIT HISTORY:
+   - Because the key was already committed, run git-filter-repo to erase it from previous commits:
+     git filter-repo --invert-paths --path "${finding.file_path}"
+
+5. VERIFY AND PUSH:
+   - Run tests or test build to verify everything runs cleanly.
+   - Commit and push back to GitHub:
+     git add .
+     git commit -m "security: remove hardcoded ${finding.secret_type} and load from env"
+     git push origin ${branch} --force
+`;
+}
+
 // Remediation Modal
-function openRemediationModal(findingId) {
+function openRemediationModal(findingId, autoCopy = false) {
   const finding = activeFindings.find(f => f.id === findingId);
   if (!finding) return;
 
   document.getElementById("modal-finding-subtitle").innerText = `${finding.secret_type} in ${finding.file_path}:${finding.line_number}`;
   document.getElementById("modal-git-command").innerText = `git filter-repo --invert-paths --path "${finding.file_path}"`;
 
+  // Generate engineered AI prompt
+  const promptText = buildAiRemediationPrompt(finding);
+  const promptEl = document.getElementById("modal-ai-prompt");
+  if (promptEl) {
+    promptEl.value = promptText;
+  }
+
   document.getElementById("remediation-modal").classList.remove("hidden");
   lucide.createIcons();
+
+  if (autoCopy) {
+    copyAiPrompt();
+  }
+}
+
+function copyAiPrompt() {
+  const promptEl = document.getElementById("modal-ai-prompt");
+  if (!promptEl || !promptEl.value) return;
+
+  navigator.clipboard.writeText(promptEl.value).then(() => {
+    const btnText = document.getElementById("copy-ai-btn-text");
+    if (btnText) {
+      btnText.innerText = "Copied!";
+      setTimeout(() => { btnText.innerText = "Copy AI Prompt"; }, 2500);
+    }
+    showToast("🤖 AI Fix Prompt copied! Paste into your AI coding assistant.");
+  });
 }
 
 function closeRemediationModal() {
