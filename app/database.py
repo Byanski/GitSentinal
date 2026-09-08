@@ -76,7 +76,7 @@ def init_db():
         "daily_scan_time": "03:00",
         "desktop_notifications": "true",
         "excluded_extensions": ".png,.jpg,.jpeg,.gif,.svg,.ico,.webp,.mp4,.mp3,.pdf,.zip,.tar,.gz,.exe,.bin,.woff,.woff2,.ttf,.eot,.pyc,.lock",
-        "excluded_paths": "node_modules,vendor,dist,build,package-lock.json,yarn.lock,pnpm-lock.yaml,Cargo.lock,.git",
+        "excluded_paths": "node_modules,vendor,dist,build,package-lock.json,yarn.lock,pnpm-lock.yaml,Cargo.lock,.git,tests,test,spec,__tests__",
         "min_entropy": "3.2"
     }
 
