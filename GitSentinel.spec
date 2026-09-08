@@ -68,3 +68,21 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+if sys.platform == 'darwin':
+    app = BUNDLE(
+        exe,
+        name='GitSentinel.app',
+        icon=None,
+        bundle_identifier='com.byanski.gitsentinel',
+        info_plist={
+            'NSHighResolutionCapable': 'True',
+            'LSBackgroundOnly': 'False',
+            'CFBundleName': 'GitSentinel',
+            'CFBundleDisplayName': 'GitSentinel',
+            'CFBundleIdentifier': 'com.byanski.gitsentinel',
+            'CFBundleVersion': '1.0.0',
+            'CFBundleShortVersionString': '1.0.0',
+        }
+    )
+

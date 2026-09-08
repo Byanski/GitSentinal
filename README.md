@@ -1,7 +1,7 @@
 # GitSentinel 🛡️
 
-[![Build and Publish Releases](https://github.com/Byanski/ENV-API-scanner/actions/workflows/release.yml/badge.svg)](https://github.com/Byanski/ENV-API-scanner/actions/workflows/release.yml)
-[![Releases](https://img.shields.io/github/v/release/Byanski/ENV-API-scanner?include_prereleases&label=Latest%20Release)](https://github.com/Byanski/ENV-API-scanner/releases)
+[![Build and Publish Releases](https://github.com/Byanski/GitSentinal/actions/workflows/release.yml/badge.svg)](https://github.com/Byanski/GitSentinal/actions/workflows/release.yml)
+[![Releases](https://img.shields.io/github/v/release/Byanski/GitSentinal?include_prereleases&label=Latest%20Release)](https://github.com/Byanski/GitSentinal/releases)
 
 **GitSentinel** is a lightweight, high-performance security scanner that connects to your GitHub account and inspects every line of code across all your repositories for exposed API keys, credentials, and environment variables.
 
@@ -35,7 +35,17 @@ GitSentinel detects over a dozen major credential categories, including:
 
 ---
 
-## Quick Start
+## Downloads & Portable Binaries
+
+Download pre-built standalone packages from the [Releases](https://github.com/Byanski/GitSentinal/releases) page:
+- **Windows (.exe)**: [GitSentinel.exe](https://github.com/Byanski/GitSentinal/releases/latest/download/GitSentinel.exe) (single-file executable, zero install)
+- **macOS Apple Silicon (.dmg)**: [GitSentinel-macOS-arm64.dmg](https://github.com/Byanski/GitSentinal/releases/latest/download/GitSentinel-macOS-arm64.dmg) (for M1/M2/M3/M4 Macs)
+- **macOS Intel (.dmg)**: [GitSentinel-macOS-x86_64.dmg](https://github.com/Byanski/GitSentinal/releases/latest/download/GitSentinel-macOS-x86_64.dmg) (for Intel Macs)
+- **Linux (.AppImage)**: [GitSentinel-x86_64.AppImage](https://github.com/Byanski/GitSentinal/releases/latest/download/GitSentinel-x86_64.AppImage) (portable executable, run with `chmod +x`)
+
+---
+
+## Quick Start (From Source)
 
 ### 1. Launch with One Click (Windows)
 Double-click `run.bat` in the project root. It will install any missing dependencies and open `http://localhost:8000` in your default browser.
