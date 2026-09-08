@@ -1,5 +1,8 @@
 # GitSentinel 🛡️
 
+[![Build and Publish Releases](https://github.com/Byanski/ENV-API-scanner/actions/workflows/release.yml/badge.svg)](https://github.com/Byanski/ENV-API-scanner/actions/workflows/release.yml)
+[![Releases](https://img.shields.io/github/v/release/Byanski/ENV-API-scanner?include_prereleases&label=Latest%20Release)](https://github.com/Byanski/ENV-API-scanner/releases)
+
 **GitSentinel** is a lightweight, high-performance security scanner that connects to your GitHub account and inspects every line of code across all your repositories for exposed API keys, credentials, and environment variables.
 
 It alerts you to the exact repository, file, and line number on GitHub, provides copy-paste remediation commands to purge secrets from your Git history, and can run silently in the background once a day with desktop notifications.
